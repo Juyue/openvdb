@@ -63,7 +63,8 @@ if __name__ == "__main__":
     # Visualization
     ps.remove_all_structures()
     visualize_grid_color(grid, feature)
-    ps.show()
+    ps.screenshot("outputs/mutable_grids_1.png")
+    # ps.show()
 
     # Get the IJK coordinates to be disabled
     disable_ijk = grid.ijk.rmask(feature.jdata[:, 0] > 0.5)
@@ -75,7 +76,8 @@ if __name__ == "__main__":
     visualize_grid_color(
         grid, feature.jagged_like(enabled_mask.jdata.unsqueeze(1).repeat(1, 3).float()), ignore_disabled=True
     )
-    ps.show()
+    # ps.show()
+    ps.screenshot("outputs/mutable_grids_mask.png")
 
     # Sample features onto points
     pts_feature = grid.sample_trilinear(pcd_jagged, feature)
@@ -88,8 +90,8 @@ if __name__ == "__main__":
     ps.register_point_cloud("pcd_2", pcd_2, enabled=True).add_color_quantity(
         "feature", pts_feature[1].jdata.cpu().numpy(), enabled=True
     )
-    ps.show()
-
+    ps.screenshot("outputs/mutable_grids_disabled_by_mask.png")
+    # ps.show()
     # We could enable those IJK back
     grid.enable_ijk(disable_ijk)
 
@@ -104,4 +106,5 @@ if __name__ == "__main__":
     ps.register_point_cloud("pcd_2", pcd_2, enabled=True).add_color_quantity(
         "feature", pts_feature[1].jdata.cpu().numpy(), enabled=True
     )
-    ps.show()
+    # ps.show()
+    ps.screenshot("outputs/mutable_grids_enabled_by_mask.png")

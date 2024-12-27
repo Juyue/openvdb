@@ -30,22 +30,36 @@ if __name__ == "__main__":
 
     [p] = load_dragon_mesh(mode="v", device=torch.device("cuda"))
 
-    grid_origin = fvdb.gridbatch_from_points(p, voxel_sizes=[0.005] * 3, origins=[0.0] * 3)
+
+    grid_origin = fvdb.gridbatch_from_points(p, voxel_sizes=[0.2] * 3, origins=[0.0] * 3)
     visualize_grid(grid_origin, 0.0)
+    ps.screenshot("outputs/grid_subdivide_coarsen_origin.png")
+    print("-" * 80)
+    print("grid_origin.ijk[0].jdata.shape: ", grid_origin.ijk[0].jdata.shape)
+    print("grid_origin.num_enabled_voxels: ", grid_origin.num_enabled_voxels[0])
 
     grid_subdivided = grid_origin.subdivided_grid(2)
     visualize_grid(grid_subdivided, 0.15)
+    ps.screenshot("outputs/grid_subdivide_coarsen_subdivided.png")
+    print("-" * 80) 
+    print("grid_subdivided.ijk[0].jdata.shape: ", grid_subdivided.ijk[0].jdata.shape)
+    print("grid_subdivided.num_enabled_voxels: ", grid_subdivided.num_enabled_voxels[0])
+
 
     grid_coarsened = grid_origin.coarsened_grid(2)
     visualize_grid(grid_coarsened, 0.3)
-
-    ps.show()
+    ps.screenshot("outputs/grid_subdivide_coarsen_coarsened.png")
+    print("-" * 80)
+    print("grid_coarsened.ijk[0].jdata.shape: ", grid_coarsened.ijk[0].jdata.shape)
+    print("grid_coarsened.num_enabled_voxels: ", grid_coarsened.num_enabled_voxels[0])
 
     grid_dual = grid_origin.dual_grid()
 
     grid_dual_gv, grid_dual_ge = grid_dual.viz_edge_network
     ps.remove_all_structures()
     visualize_grid(grid_origin, 0.0)
+    ps.screenshot("outputs/grid_subdivide_coarsen_origin_dual.png")
+
     ps.register_curve_network(
         str(uuid.uuid4()),
         grid_dual_gv[0].jdata.cpu().numpy(),
@@ -53,4 +67,5 @@ if __name__ == "__main__":
         enabled=True,
         radius=0.004,
     )
-    ps.show()
+    # ps.show()
+    ps.screenshot("outputs/grid_subdivide_coarsen_origin_dual_edges.png")

@@ -12,26 +12,26 @@ from fvdb.utils.examples import load_dragon_mesh
 def main():
     device = "cuda"
 
-    vox_size = 0.0075
+    # vox_size = 0.0075
+    vox_size = 0.1
     vox_origin = (0, 0, 0)
-    N = 1
+    N = 10
 
     [p] = load_dragon_mesh(mode="v", skip_every=N, device=torch.device(device))
+    print("Total number of points sampled from mesh: ", p.shape[0])
 
     index = GridBatch(device=device)
     index.set_from_points(p, [-1, -1, -1], [1, 1, 1], vox_size, vox_origin)
 
-    primal_voxels = index.ijk.jdata
-
-    nhood = index.neighbor_indexes(primal_voxels, 1, 0).jdata
+    primal_voxels = index.ijk.jdata # (b, 3)
+    nhood = index.neighbor_indexes(primal_voxels, 2, 0).jdata # (b, 5, 5, 5), index of neighbors, if [-1, -1, -1] then not a neighbor
 
     ps.init()
-    for _ in range(10):
+    for ii in range(10):
         randvox = np.random.randint(nhood.shape[0])
 
         voxijk = primal_voxels[randvox]
         nbrs = primal_voxels[nhood[randvox][nhood[randvox] >= 0]]
-        print(nhood[randvox])
         nhood_ijk = torch.cat([voxijk.unsqueeze(0), nbrs], dim=0)
 
         vp, ve = index.viz_edge_network
@@ -42,7 +42,8 @@ def main():
 
         ps.register_curve_network("vox", vp.cpu().numpy(), ve.cpu().numpy(), radius=0.0025)
         ps.register_curve_network("nhd", vi.cpu().numpy(), vei.cpu().numpy(), radius=0.005)
-        ps.show()
+        ps.screenshot(f"outputs/voxel_neighborhood_{ii}.png")
+        # ps.show()
 
 
 if __name__ == "__main__":
