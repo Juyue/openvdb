@@ -14,7 +14,7 @@ from fvdb.utils.examples import load_dragon_mesh
 
 def visualize_grid(a: fvdb.GridBatch, offset: float):
     assert a.grid_count == 1
-    mesh_a = pcu.voxel_grid_geometry(a.ijk[0].jdata.cpu().numpy(), a.voxel_sizes[0].cpu().numpy(), gap_fraction=0.1)
+    mesh_a = pcu.voxel_grid_geometry(a.ijk[0].jdata.cpu().numpy(), a.voxel_sizes[0].cpu().numpy())
     ps.register_surface_mesh(
         str(uuid.uuid4()),
         mesh_a[0] + np.array([0.0, 0.0, offset]) - a.voxel_sizes[0].cpu().numpy()[None, :] / 2.0,
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     grid_subdivided = grid_origin.subdivided_grid(2)
     visualize_grid(grid_subdivided, 0.15)
     ps.screenshot("outputs/grid_subdivide_coarsen_subdivided.png")
-    print("-" * 80) 
+    print("-" * 80)
     print("grid_subdivided.ijk[0].jdata.shape: ", grid_subdivided.ijk[0].jdata.shape)
     print("grid_subdivided.num_enabled_voxels: ", grid_subdivided.num_enabled_voxels[0])
 

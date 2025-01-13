@@ -7,10 +7,11 @@ import point_cloud_utils as pcu
 import polyscope as ps
 from fvdb.utils.examples import load_car_1_mesh, load_car_2_mesh
 
-VOXEL_SIZES = 0.1
+fvdb.nn.SparseConv3d.allow_tf32 = False
+VOXEL_SIZES = 0.03
 def visualize_grid_with_voxel_colors(grid, feature, fname="grid"):
-    grid_mesh = pcu.voxel_grid_geometry(grid.ijk[0].jdata.cpu().numpy(), grid.voxel_sizes[0].cpu().numpy(), gap_fraction=0.1)
-    grid_color = feature[0].jdata.cpu().numpy().repeat(8, axis=0).reshape(-1, 3)
+    grid_mesh = pcu.voxel_grid_geometry(grid.ijk[0].jdata.detach().cpu().numpy(), grid.voxel_sizes[0].detach().cpu().numpy(), gap_fraction=0.1)
+    grid_color = feature[0].jdata.detach().cpu().numpy().repeat(8, axis=0).reshape(-1, 3)
     ps.register_surface_mesh("grid", grid_mesh[0], grid_mesh[1], enabled=True).add_color_quantity("color", grid_color, enabled=True)
     ps.screenshot(f"outputs/{fname}.png")
 
@@ -35,10 +36,10 @@ def example_sampling_grids():
     N = 2
     grid, feature = _create_grid_two_cars()
 
-    # 1. Trilinear sampling 
+    # 1. Trilinear sampling
     # 1.0 Sample a active voxel in the grid
     randvox_idx = torch.tensor(np.random.randint(low=grid.total_voxels, size=N))
-    # 1.1 Get the center of the voxel 
+    # 1.1 Get the center of the voxel
     randvox_ijk = grid.ijk.jdata[randvox_idx].cuda() # This needs to be a JaggedTensor
     randvox_world = grid.grid_to_world(randvox_ijk.float().view(-1, 3)).jdata
     # 1.2 Add some noise to the voxel center
@@ -69,7 +70,7 @@ def example_splating_grids():
 
     colors = torch.randn(N, 3).cuda()
     colors = torch.abs(colors)/torch.norm(colors, dim=-1, keepdim=True)
-    
+
     # 1. Splat the colors to the grid
     feature = grid.splat_trilinear(points, colors)
 
@@ -89,7 +90,7 @@ def example_checking_if_points_are_inside_grid():
     # 0. Prep
     N = 1
     points = torch.randn(N, 3).cuda()
-    # 0.1 create a grid of 4 active voxels 
+    # 0.1 create a grid of 4 active voxels
     grid = fvdb.GridBatch().cuda()
     grid.set_from_points(points, voxel_sizes=VOXEL_SIZES)
 
@@ -110,10 +111,10 @@ def example_checking_if_points_are_inside_grid():
 
     # 2. Visualize
     ps.init()
-    # visualize the voxel grid; 
+    # visualize the voxel grid;
     gv, ve = grid.viz_edge_network
     ps.register_curve_network("grid", gv.jdata.cpu().numpy(), ve.jdata.cpu().numpy(), enabled=True)
-    
+
     # visualize the points
     colors_1 = np.ones((N * M, 3)) * 0.5
     colors_1[points_inside.jdata.cpu().numpy()] = np.array([1, 0, 0])
@@ -126,7 +127,7 @@ def example_checking_if_points_are_inside_grid():
     ps.screenshot("outputs/checking_if_points_are_inside_grid.png")
 
 def example_indexing_grids():
-    """ 
+    """
     reference_grid: GridBatch
     query_ijk (query_grid): TorchTensor/JaggedTensor
 
@@ -204,18 +205,17 @@ def example_neighboring_voxels():
     neighboring_colors[rand_ijk_idx.jdata.cpu().numpy()] = np.array([1, 0, 0])
     neighboring_colors = neighboring_colors.repeat(8, axis=0).reshape(-1, 3)
     voxel_sizes = finer_grid.voxel_sizes.cpu().numpy()
-    import pdb; pdb.set_trace()
     neighboring_mesh = pcu.voxel_grid_geometry(neighboring_ijk.cpu().numpy(), voxel_sizes[0], gap_fraction=0.1)
 
     ps.register_surface_mesh("neighboring_voxels", neighboring_mesh[0], neighboring_mesh[1], enabled=True).add_color_quantity("color", neighboring_colors, enabled=True)
     ps.screenshot("outputs/neighboring_voxels.png")
 
 def example_pooling_or_subdivide():
-    """ 
+    """
     grid: GridBatch
     feature: JaggedTensor
 
-    
+
     finer_grid: GridBatch
     finer_feature: JaggedTensor
 
@@ -223,16 +223,16 @@ def example_pooling_or_subdivide():
     coarser_feature: JaggedTensor
     """
 
-    # 0. Prep, load a grid of cars and corresponding normals 
+    # 0. Prep, load a grid of cars and corresponding normals
     grid, feature = _create_grid_two_cars()
 
     # 1. coarsen the grid
     coarse_feature, coarse_grid = grid.max_pool(2, feature)
     # 2. subdivide the grid
     fine_feature, fine_grid = grid.subdivide(2, feature )
-    # 2.1 subdivide wo original grid, 
+    # 2.1 subdivide wo original grid,
     fine_feature_wo_original_grid, fine_grid_wo_original_grid = coarse_grid.subdivide(2, coarse_feature)
-    # 2.2 subdivide with original grid, 
+    # 2.2 subdivide with original grid,
     recovered_feature, recovered_grid = coarse_grid.subdivide(2, coarse_feature, fine_grid=grid)
 
 
@@ -257,7 +257,7 @@ def example_num_voxels_in_grid():
 
     for bb, nn in enumerate(grid.num_voxels):
         print(f"Number of voxels in grid {bb}: {nn}")
-    
+
     for bb, nn in enumerate(grid.num_enabled_voxels):
         print(f"Number of enabled voxels in grid {bb}: {nn}")
 
@@ -266,7 +266,26 @@ def example_convolution():
 
     # 0. Prep
     grid, feature = _create_grid_two_cars()
+    import ipdb; ipdb.set_trace()
 
+    # 1.
+    vdbtensor = fvdb.nn.VDBTensor(grid, feature)
+    conv = fvdb.nn.SparseConv3d(in_channels=3, out_channels=3, kernel_size=3, stride=1, bias=False).to(vdbtensor.device)
+
+    output = conv(vdbtensor)
+
+    conv_stride_2 = fvdb.nn.SparseConv3d(in_channels=3, out_channels=3, kernel_size=3, stride=2, bias=False).to(vdbtensor.device)
+    output_stride_2 = conv_stride_2(vdbtensor)
+
+    transposed_conv = fvdb.nn.SparseConv3d(in_channels=3, out_channels=3, kernel_size=3, stride=1, bias=False, transposed=True).to(vdbtensor.device)
+    output_transposed = transposed_conv(output_stride_2, out_grid = grid)
+
+    # visualize two tensors
+    ps.init()
+    visualize_grid_with_voxel_colors(grid, feature, fname="original_grid")
+    visualize_grid_with_voxel_colors(output.grid, output.data, fname="convolution_output")
+    visualize_grid_with_voxel_colors(output_stride_2.grid, output_stride_2.data, fname="convolution_output_stride_2")
+    visualize_grid_with_voxel_colors(output_transposed.grid, output_transposed.data, fname="convolution_output_transposed")
 
 
 @click.command()

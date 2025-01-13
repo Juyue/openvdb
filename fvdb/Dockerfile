@@ -57,11 +57,20 @@ RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master
 RUN curl -o ~/Miniforge3-$(uname)-$(uname -m).sh -L https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh && \
     bash ~/Miniforge3-$(uname)-$(uname -m).sh -b -p /opt/conda
 
+# Install fvdb package
 ENV PATH /opt/conda/bin:$PATH
 ENV TORCH_CUDA_ARCH_LIST "6.1;7.0;7.5;8.0;8.6+PTX"
+ENV MAX_JOBS=48
 
 RUN conda env create -f env/dev_environment.yml
-# RUN conda run -n fvdb \
-#     MAX_JOBS=$(free -g | awk '/^Mem:/{jobs=int($4/2.5); if(jobs<1) jobs=1; print jobs}')  \
-#     TORCH_CUDA_ARCH_LIST="7.0;7.5;8.0;8.6+PTX" \
-#     python setup.py develop
+RUN conda run -n fvdb python setup.py develop
+
+#Install glfw and xvfb for polyscope
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated ca-certificates && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends && \
+    apt-get install -y libglfw3-dev && \
+    apt-get install -y xvfb
+ENV DISPLAY=:99
+RUN Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+
